@@ -811,7 +811,7 @@ def all_children(o):
     return [o] + list(o.children_recursive)
 
 
-def palette_bake(objs, size_cells=16, cell=32):
+def palette_bake(objs, size_cells=16, cell=32, fname="court_palette.png"):
     """EVERY material -> one palette texture (Roblox's importer drops plain material colours, and a single
     shared texture per file is the most reliable thing to import). 32px swatches so far mips don't bleed."""
     names = sorted({m.name for o in objs if o.type == "MESH" for m in o.data.materials if m})
@@ -829,7 +829,7 @@ def palette_bake(objs, size_cells=16, cell=32):
                 o_ = (y * size + x) * 4
                 px[o_:o_ + 4] = rgb + [1.0]
     img.pixels = px
-    img.filepath_raw = os.path.join(TEX_DIR, "court_palette.png")
+    img.filepath_raw = os.path.join(TEX_DIR, fname)
     img.file_format = "PNG"
     img.save()
     pm = bpy.data.materials.new("HEX_Court_Palette")

@@ -27,3 +27,24 @@ pole and arm.
 lines/graphics/net cords from colliding).
 
 Rebuild from source: `blender --background --python blender/build_hex_courts.py -- [--render]`
+
+## Queue pad
+
+| File | Contents |
+|---|---|
+| `HEX_Tokyo_QueuePad.fbx` | `HEX_Tokyo_QueuePad` → Pad_Base, Pad_Top, Pad_Lines, Pad_GlowRing |
+
+This is a round pad about 7.2 studs across and 0.32 studs tall, in the same style as the courts:
+- graphite body with a rounded rim and a recessed navy top,
+- cool-white rings with a centre standing spot,
+- one sakura ring.
+
+No text and no blossom. **Import it exactly like the courts** and place it beside or on the court.
+
+To join, put `roblox/HEX_QueuePad.server.lua` in **ServerScriptService**. It works with any number of pads, as long
+as each model's name starts with `HEX_Tokyo_QueuePad`.
+- When a player stands on a pad, its ring turns to bright Neon sakura.
+- The pad model gets the attributes `Occupied` and `PlayerId`.
+- It fires `ReplicatedStorage.HEX_QueueChanged(pad, player | nil)`, so your match system can connect to it.
+
+Rebuild from source: `blender --background --python blender/build_hex_queuepad.py -- [--render]`
