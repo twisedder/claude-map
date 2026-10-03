@@ -184,6 +184,12 @@ See `layout_report.json → sign_and_screen_counts` for exact counts.
 ---
 
 ## Importing into Roblox Studio
+> **Colours:** Roblox's importer ignores plain material colours (that made the first export import grey).
+> The FBX files are now exported with every colour baked into one small palette texture
+> (`blender/textures/palette.png`, embedded in each FBX), so meshes arrive coloured. After importing,
+> paste `roblox/HEX_City_Setup.lua` into the Command Bar once to make LED strips Neon and set
+> collisions/shadows.
+
 1. **3D Importer → Import** each `export/fbx/HEX_City_0X_*.fbx` (start with 01 and 02).
 2. In the importer's **File General → Scale Unit**, choose **`Stud`**. The FBX is tagged in
    metres. If you leave it on Meter, Roblox multiplies everything by ~3.57 and you get the old scale

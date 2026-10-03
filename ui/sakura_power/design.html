@@ -2,321 +2,301 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Sakura Power UI</title>
-<style>
-  html, body { margin: 0; padding: 0; background: transparent; }
-  svg { display: block; }
-  .jp { font-family: "IPAGothic", "IPAPGothic", "Noto Sans CJK JP", sans-serif; }
-  .lat { font-family: "DejaVu Sans", Arial, sans-serif; font-weight: 700; }
-</style>
+<title>Sakura Tree Power UI</title>
+<style>html, body { margin: 0; padding: 0; background: transparent; } svg { display: block; }</style>
 </head>
 <body>
 <div id="root"></div>
 <script>
 /*
-  HEX! — Sakura Power meter (vector source).
-  Layers (all on a 512 x 1024 canvas unless noted):
-    back     frame body + dark track                      (bottom layer)
-    fill     power gradient, track-sized 92 x 722         (clipped from the bottom in Roblox)
-    cap      bright leading edge of the fill, 92 x 28
-    overlay  ticks, glass, neon tube, plate, badge, sakura branch (top layer)
-    glow     pink halo for full charge / perfect release
-    marker   perfect-release marker, 160 x 40
-    petal    single petal particle, 128 x 128
-    preview  composited previews on a dark background
+  HEX! — Sakura tree power meter (vector source, no text).
+  A sakura tree with the power bar standing in the middle of it: the trunk splits and wraps the bar,
+  branches + blossoms frame its top. The bar fills straight up.
+
+  Layers (1024 x 1024 canvas unless noted):
+    back     moon disc, rear canopy, trunk behind the bar, bar frame + dark track   (bottom)
+    fill     power gradient, track-sized 76 x 656 (revealed from the bottom in Roblox)
+    cap      76 x 28 bright leading edge of the fill
+    overlay  ticks, neon tube, trunk strands + vines wrapping the bar, front blossoms, petals (top)
+    glow     halo for full charge / perfect release
+    marker   120 x 32 perfect-release marker
+    petal    128 x 128 petal particle
+    preview  composited previews
 */
-const W = 512, H = 1024;
-const FRAME = { x: 250, y: 190, w: 120, h: 750, r: 22 };
-const TRACK = { x: 264, y: 204, w: 92, h: 722, r: 12 };
+const S = 1024;
+const FRAME = { x: 462, y: 250, w: 100, h: 680, r: 26 };
+const TRACK = { x: 474, y: 262, w: 76, h: 656, r: 16 };
 
-// deterministic jitter
-let seed = 7;
+let seed = 11;
 const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-
 const PETAL = "M0,0 C-0.45,-0.2 -0.62,-0.74 -0.3,-1.0 Q-0.12,-1.03 0,-0.84 Q0.12,-1.03 0.3,-1.0 C0.62,-0.74 0.45,-0.2 0,0 Z";
 
-const defs = `
-<defs>
-  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0" stop-color="#454a53"/><stop offset="0.18" stop-color="#2c3037"/>
-    <stop offset="0.55" stop-color="#1b1d22"/><stop offset="0.85" stop-color="#2a2e35"/>
-    <stop offset="1" stop-color="#3b4048"/>
-  </linearGradient>
-  <linearGradient id="metalV" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
-    <stop offset="1" stop-color="#000000" stop-opacity="0.25"/>
-  </linearGradient>
-  <radialGradient id="bolt" cx="0.35" cy="0.35" r="0.7">
-    <stop offset="0" stop-color="#c9ced6"/><stop offset="0.6" stop-color="#6c727c"/><stop offset="1" stop-color="#2a2d33"/>
-  </radialGradient>
-  <linearGradient id="trackShade" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0" stop-color="#000" stop-opacity="0.55"/><stop offset="0.25" stop-color="#000" stop-opacity="0"/>
-    <stop offset="0.75" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.55"/>
-  </linearGradient>
-  <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse">
-    <rect width="4" height="1" fill="#ffffff" opacity="0.035"/>
-  </pattern>
-  <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-    <rect width="3" height="10" fill="#ff9fc9" opacity="0.28"/>
-  </pattern>
-  <linearGradient id="fillGrad" x1="0" y1="1" x2="0" y2="0">
-    <stop offset="0" stop-color="#9e0f47"/><stop offset="0.3" stop-color="#e02a74"/>
-    <stop offset="0.62" stop-color="#ff6aa9"/><stop offset="0.88" stop-color="#ffc0db"/>
-    <stop offset="1" stop-color="#fff3f8"/>
-  </linearGradient>
-  <linearGradient id="fillEdge" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0" stop-color="#fff" stop-opacity="0.45"/><stop offset="0.12" stop-color="#fff" stop-opacity="0.12"/>
-    <stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="0.9" stop-color="#000" stop-opacity="0.18"/>
-    <stop offset="1" stop-color="#000" stop-opacity="0.3"/>
-  </linearGradient>
-  <pattern id="stripes" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
-    <rect width="7" height="18" fill="#ffffff" opacity="0.09"/>
-  </pattern>
-  <linearGradient id="plate" x1="0" y1="0" x2="1" y2="0">
-    <stop offset="0" stop-color="#f0347c"/><stop offset="0.55" stop-color="#d81b63"/><stop offset="1" stop-color="#a80f4c"/>
-  </linearGradient>
-  <linearGradient id="petalGrad" x1="0.5" y1="1" x2="0.5" y2="0">
-    <stop offset="0" stop-color="#ec5f97"/><stop offset="0.35" stop-color="#ff9ec6"/>
-    <stop offset="0.8" stop-color="#ffe0ee"/><stop offset="1" stop-color="#fff6fa"/>
-  </linearGradient>
-  <linearGradient id="petalGradPale" x1="0.5" y1="1" x2="0.5" y2="0">
-    <stop offset="0" stop-color="#f489b4"/><stop offset="0.5" stop-color="#ffc6de"/><stop offset="1" stop-color="#fffafc"/>
-  </linearGradient>
-  <radialGradient id="budGrad" cx="0.4" cy="0.35" r="0.8">
-    <stop offset="0" stop-color="#ffd2e5"/><stop offset="0.6" stop-color="#ff7fb2"/><stop offset="1" stop-color="#d13f7c"/>
-  </radialGradient>
-  <filter id="neon" x="-30%" y="-10%" width="160%" height="120%">
-    <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="b1"/>
-    <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="b2"/>
-    <feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge>
-  </filter>
-  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
-  <filter id="shadow" x="-30%" y="-10%" width="160%" height="120%">
-    <feGaussianBlur in="SourceAlpha" stdDeviation="6"/><feOffset dx="0" dy="6"/>
-    <feComponentTransfer><feFuncA type="linear" slope="0.55"/></feComponentTransfer>
-    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-  </filter>
-  <filter id="dropSoft" x="-30%" y="-30%" width="160%" height="160%">
-    <feGaussianBlur in="SourceAlpha" stdDeviation="2.5"/><feOffset dx="0" dy="2.5"/>
-    <feComponentTransfer><feFuncA type="linear" slope="0.45"/></feComponentTransfer>
-    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-  </filter>
-</defs>`;
-
-const bolt = (x, y, r = 3.6) =>
-  `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#bolt)" stroke="#16181c" stroke-width="0.8"/>
-   <line x1="${x - r * 0.55}" y1="${y}" x2="${x + r * 0.55}" y2="${y}" stroke="#2a2d33" stroke-width="0.9"/>`;
-
-function rrect(o, inset = 0) {
-  return { x: o.x + inset, y: o.y + inset, w: o.w - 2 * inset, h: o.h - 2 * inset, r: Math.max(0, o.r - inset) };
+function bez(p, t) {
+  const u = 1 - t;
+  return [u*u*u*p[0][0] + 3*u*u*t*p[1][0] + 3*u*t*t*p[2][0] + t*t*t*p[3][0],
+          u*u*u*p[0][1] + 3*u*u*t*p[1][1] + 3*u*t*t*p[2][1] + t*t*t*p[3][1]];
+}
+// filled, tapered ribbon along a cubic bezier (organic trunk / branch shapes)
+function ribbon(p, w0, w1, n = 40) {
+  const L = [], R = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, a = bez(p, Math.max(0, t - 0.01)), b = bez(p, Math.min(1, t + 0.01)), c = bez(p, t);
+    let dx = b[0] - a[0], dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+    const w = (w0 + (w1 - w0) * Math.pow(t, 0.85)) / 2;
+    L.push([c[0] - dy * w, c[1] + dx * w]); R.push([c[0] + dy * w, c[1] - dx * w]);
+  }
+  return "M" + L.concat(R.reverse()).map(q => q[0].toFixed(1) + "," + q[1].toFixed(1)).join(" L") + " Z";
 }
 
-// ------------------------------------------------------------------------------- back
-function back() {
-  const f = FRAME, t = TRACK;
-  let s = `<g filter="url(#shadow)">
-    <rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="${f.r}" fill="url(#metal)" stroke="#0f1013" stroke-width="2"/>
-    <rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="${f.r}" fill="url(#metalV)"/>
-    <rect x="${f.x + 2}" y="${f.y + 2}" width="${f.w - 4}" height="${f.h - 4}" rx="${f.r - 2}" fill="none" stroke="#6d737d" stroke-opacity="0.5" stroke-width="1"/>
-  </g>`;
-  // mounting brackets (left side, like the blade signs in the city)
-  for (const y of [392, 588]) {
-    s += `<rect x="232" y="${y - 6}" width="22" height="12" rx="2" fill="url(#metal)" stroke="#0f1013" stroke-width="1.2"/>`;
+// ---------------------------------------------------------------- tree
+const TRUNK_BACK = [[[512, 1000], [512, 860], [512, 720], [512, 600]], 170, 96];   // mass behind the bar
+const CENTRE_UP = [[[512, 620], [512, 470], [496, 330], [512, 150]], 84, 16];      // behind the bar, into canopy
+const ROOTS = [
+  [[[470, 960], [420, 985], [370, 995], [300, 1004]], 50, 6], [[[556, 960], [610, 984], [664, 994], [736, 1004]], 48, 6],
+  [[[500, 975], [470, 992], [440, 1000], [400, 1008]], 26, 4], [[[530, 975], [566, 992], [600, 1000], [636, 1008]], 26, 4],
+];
+// strands that split around the bar (front, in the overlay)
+const STRAND_L = [[[486, 1000], [380, 880], [430, 700], [446, 560]], 72, 34];
+const STRAND_R = [[[540, 1000], [646, 880], [596, 700], [580, 560]], 72, 34];
+const BRANCHES = [
+  [[[446, 566], [424, 430], [330, 360], [214, 292]], 36, 9], [[[580, 566], [604, 430], [700, 360], [812, 292]], 36, 9],
+  [[[380, 404], [320, 430], [250, 440], [182, 420]], 14, 4], [[[648, 404], [708, 430], [778, 440], [846, 420]], 14, 4],
+  [[[340, 376], [320, 330], [300, 290], [292, 240]], 12, 4], [[[688, 376], [708, 330], [726, 290], [734, 240]], 12, 4],
+  [[[506, 300], [452, 250], [420, 210], [398, 170]], 12, 4], [[[514, 260], [570, 220], [600, 190], [626, 150]], 12, 4],
+];
+// thin vines wrapping over the frame border (never over the track)
+const VINES = [
+  [[[420, 842], [440, 826], [458, 818], [472, 812]], 9, 4], [[[604, 642], [584, 630], [566, 622], [552, 618]], 9, 4],
+  [[[426, 470], [444, 462], [458, 458], [470, 456]], 7, 3],
+];
+
+const TONES = [["#9c3d6b", "#b24c7d", "#c55c8c"], ["#d26b98", "#e07ca7", "#ec8fb5"], ["#f2a3c4", "#f8b8d2", "#ffd0e2"]];
+function cluster(cx, cy, spread, count, layer) {
+  const tones = TONES[layer];
+  let s = "";
+  for (let i = 0; i < count; i++) {
+    const a = rnd() * Math.PI * 2, d = rnd() * spread * 0.55;
+    const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * 0.8, r = spread * (0.38 + rnd() * 0.32);
+    s += `<circle cx="${x.toFixed(1)}" cy="${(y + r * 0.12).toFixed(1)}" r="${r.toFixed(1)}" fill="${tones[0]}"/>
+          <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(r * 0.92).toFixed(1)}" fill="${tones[1]}"/>
+          <circle cx="${(x - r * 0.22).toFixed(1)}" cy="${(y - r * 0.24).toFixed(1)}" r="${(r * 0.55).toFixed(1)}" fill="${tones[2]}"/>`;
   }
-  s += `<rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}" fill="#0b0c10"/>
-        <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}" fill="url(#scan)"/>`;
-  for (const [x, y] of [[257, 205], [363, 205], [257, 925], [363, 925], [257, 565], [363, 565]]) s += bolt(x, y);
   return s;
 }
-
-// ------------------------------------------------------------------------------- fill (own canvas)
-function fill(w = TRACK.w, h = TRACK.h) {
-  // rounded like the track so the bottom corners sit cleanly inside it
-  return `<clipPath id="fillRound"><rect width="${w}" height="${h}" rx="${TRACK.r}"/></clipPath>
-          <g clip-path="url(#fillRound)">
-          <rect width="${w}" height="${h}" fill="url(#fillGrad)"/>
-          <rect width="${w}" height="${h}" fill="url(#stripes)"/>
-          <rect width="${w}" height="${h}" fill="url(#fillEdge)"/></g>`;
-}
-function cap(w = TRACK.w) {
-  return `<g filter="url(#neon)"><rect x="4" y="12" width="${w - 8}" height="4" rx="2" fill="#ffffff"/></g>
-          <rect x="4" y="13" width="${w - 8}" height="2" rx="1" fill="#ffffff"/>`;
-}
-
-// ------------------------------------------------------------------------------- sakura parts
-function blossom(cx, cy, r, rot, pale = false) {
-  let s = `<g transform="translate(${cx},${cy}) rotate(${rot})" filter="url(#dropSoft)">`;
-  for (let i = 0; i < 5; i++) {
-    const k = 0.92 + rnd() * 0.12;
-    s += `<path d="${PETAL}" transform="rotate(${i * 72 + (rnd() - 0.5) * 6}) scale(${r * k})"
-            fill="url(#${pale ? "petalGradPale" : "petalGrad"})" stroke="#d6457f" stroke-opacity="0.55"
-            stroke-width="${0.9 / (r * k)}" vector-effect="none"/>`;
+const PAL = [["#7e2f58", "#923a67", "#a64576", "#b85384"], ["#bd5787", "#cf6895", "#df7ba5", "#ec90b5"],
+             ["#e88ab2", "#f2a1c2", "#f8b8d2", "#ffd3e5"]];
+// fluffy lobe made of many small shaded puffs, lit from the top-left
+function lobe(cx, cy, spread, layer, avoidTrack = false) {
+  const pal = PAL[layer];
+  const n = Math.round((spread * spread) / 70);
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * spread;
+    const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * 0.85;
+    const r = (9 + rnd() * 13) * Math.max(0.7, spread / 70);
+    if (avoidTrack && x + r > TRACK.x - 2 && x - r < TRACK.x + TRACK.w + 2 && y + r > TRACK.y) continue;
+    const shade = Math.min(0.999, Math.max(0, 0.5 + ((y - cy) + (x - cx) * 0.45) / (spread * 1.9) + (rnd() - 0.5) * 0.25));
+    pts.push([x, y, r, pal[Math.floor((1 - shade) * pal.length)]]);
   }
-  s += `<circle r="${r * 0.2}" fill="#f45b95"/>`;
-  for (let i = 0; i < 9; i++) {
-    const a = (i / 9) * Math.PI * 2 + rnd() * 0.3, L = r * (0.36 + rnd() * 0.1);
-    const x = Math.cos(a) * L, y = Math.sin(a) * L;
-    s += `<line x1="0" y1="0" x2="${x}" y2="${y}" stroke="#c93573" stroke-width="${Math.max(0.8, r * 0.035)}"/>
-          <circle cx="${x}" cy="${y}" r="${Math.max(1.1, r * 0.055)}" fill="#ffd36a"/>`;
+  pts.sort((p, q) => p[1] - q[1]);
+  let s = "";
+  for (const [x, y, r, c] of pts) s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${c}"/>`;
+  for (let i = 0; i < n / 6; i++) {
+    const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * spread * 0.9;
+    const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d * 0.85 - spread * 0.1;
+    if (avoidTrack && x > TRACK.x - 4 && x < TRACK.x + TRACK.w + 4 && y > TRACK.y) continue;
+    s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(1.6 + rnd() * 1.6).toFixed(1)}" fill="#fff4f9" opacity="0.85"/>`;
   }
-  return s + `</g>`;
+  return s;
 }
-function bud(cx, cy, rot, s = 1) {
-  return `<g transform="translate(${cx},${cy}) rotate(${rot}) scale(${s})" filter="url(#dropSoft)">
-    <ellipse cx="0" cy="-7" rx="5.5" ry="8.5" fill="url(#budGrad)"/>
-    <path d="M-5,-1 Q0,6 5,-1 Q2,1 0,-3 Q-2,1 -5,-1 Z" fill="#6b2f40"/>
-    <line x1="0" y1="2" x2="0" y2="9" stroke="#4a2a33" stroke-width="1.6" stroke-linecap="round"/>
-  </g>`;
+function blossom(cx, cy, r, rot) {
+  let s = `<g transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) rotate(${rot.toFixed(0)})">`;
+  for (let i = 0; i < 5; i++)
+    s += `<path d="${PETAL}" transform="rotate(${i * 72}) scale(${r})" fill="url(#petalGrad)" stroke="#d6457f"
+            stroke-opacity="0.5" stroke-width="${0.9 / r}"/>`;
+  return s + `<circle r="${r * 0.22}" fill="#f2578f"/><circle r="${r * 0.1}" fill="#ffd36a"/></g>`;
 }
 function looseP(cx, cy, rot, s, op = 0.95) {
   return `<path d="${PETAL}" transform="translate(${cx},${cy}) rotate(${rot}) scale(${s})" fill="url(#petalGrad)"
-          stroke="#d6457f" stroke-opacity="0.5" stroke-width="${0.9 / s}" opacity="${op}" filter="url(#dropSoft)"/>`;
+          stroke="#d6457f" stroke-opacity="0.45" stroke-width="${0.9 / s}" opacity="${op}"/>`;
 }
-function branchSeg(d, w) {
-  return `<path d="${d}" fill="none" stroke="#4e2c39" stroke-width="${w}" stroke-linecap="round"/>
-          <path d="${d}" fill="none" stroke="#a8707f" stroke-width="${Math.max(1.2, w * 0.3)}" stroke-linecap="round"
-                transform="translate(-${w * 0.18},-${w * 0.22})" opacity="0.8"/>`;
-}
+const bolt = (x, y, r = 3.4) =>
+  `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#bolt)" stroke="#16181c" stroke-width="0.8"/>`;
+const inBar = (x, y, m = 0) => x > FRAME.x - m && x < FRAME.x + FRAME.w + m && y > FRAME.y - m && y < FRAME.y + FRAME.h;
 
-function sakura() {
-  seed = 7;
-  let s = "";
-  // branches (behind blossoms)
-  s += branchSeg("M530,36 C480,64 438,104 404,148", 18);
-  s += branchSeg("M404,148 C352,196 262,168 202,190", 12);
-  s += branchSeg("M202,190 C150,206 112,200 68,226", 7);
-  s += branchSeg("M332,176 C322,140 302,118 282,100", 6);
-  s += branchSeg("M152,201 C140,176 122,162 100,150", 4);
-  s += branchSeg("M410,142 C424,220 396,300 404,420", 7);
-  s += branchSeg("M520,1012 C470,986 424,962 388,910", 11);
-  s += branchSeg("M436,966 C452,936 458,914 474,892", 4.5);
-  // buds
-  s += bud(282, 98, -30) + bud(98, 148, -55) + bud(60, 232, -80, 0.9) + bud(474, 888, 20, 0.9) + bud(404, 428, 175);
-  s += bud(470, 60, 30, 0.9) + bud(240, 160, -10, 0.8);
-  // blossoms
-  const B = [[452, 96, 30, -20], [400, 148, 36, 8], [354, 178, 26, 40, 1], [300, 126, 24, 14], [268, 96, 17, 60, 1],
-             [214, 180, 22, 4], [160, 204, 17, 30, 1], [100, 148, 14, 0], [432, 192, 21, 50, 1], [406, 300, 16, 10],
-             [398, 384, 13, 40, 1], [388, 906, 27, 0], [434, 956, 20, 24, 1], [470, 888, 13, 10]];
-  for (const b of B) s += blossom(b[0], b[1], b[2], b[3], !!b[4]);
-  // falling petals
-  s += looseP(176, 318, 32, 15) + looseP(124, 476, -24, 12, 0.85) + looseP(436, 560, 52, 13) +
-       looseP(196, 726, 12, 10, 0.8) + looseP(452, 764, -42, 12) + looseP(162, 884, 26, 9, 0.75) +
-       looseP(452, 474, 120, 9, 0.8);
+const defs = `<defs>
+  <radialGradient id="moon" cx="0.5" cy="0.45" r="0.5">
+    <stop offset="0" stop-color="#5a3550" stop-opacity="0.95"/><stop offset="0.7" stop-color="#3a2234" stop-opacity="0.9"/>
+    <stop offset="1" stop-color="#22161f" stop-opacity="0.85"/></radialGradient>
+  <linearGradient id="bark" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#6a4d5c"/><stop offset="0.45" stop-color="#3f2e38"/><stop offset="1" stop-color="#241b21"/></linearGradient>
+  <linearGradient id="barkDark" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#3a2a33"/><stop offset="1" stop-color="#1c151a"/></linearGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#454a53"/><stop offset="0.2" stop-color="#2c3037"/><stop offset="0.55" stop-color="#1b1d22"/>
+    <stop offset="0.85" stop-color="#2a2e35"/><stop offset="1" stop-color="#3b4048"/></linearGradient>
+  <radialGradient id="bolt" cx="0.35" cy="0.35" r="0.7">
+    <stop offset="0" stop-color="#c9ced6"/><stop offset="0.6" stop-color="#6c727c"/><stop offset="1" stop-color="#2a2d33"/></radialGradient>
+  <linearGradient id="trackShade" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#000" stop-opacity="0.5"/><stop offset="0.25" stop-color="#000" stop-opacity="0"/>
+    <stop offset="0.75" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.5"/></linearGradient>
+  <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#fff" opacity="0.035"/></pattern>
+  <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="3" height="10" fill="#ff9fc9" opacity="0.28"/></pattern>
+  <linearGradient id="fillGrad" x1="0" y1="1" x2="0" y2="0">
+    <stop offset="0" stop-color="#9e0f47"/><stop offset="0.3" stop-color="#e02a74"/><stop offset="0.62" stop-color="#ff6aa9"/>
+    <stop offset="0.88" stop-color="#ffc0db"/><stop offset="1" stop-color="#fff3f8"/></linearGradient>
+  <linearGradient id="fillEdge" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#fff" stop-opacity="0.45"/><stop offset="0.14" stop-color="#fff" stop-opacity="0.12"/>
+    <stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="0.9" stop-color="#000" stop-opacity="0.18"/>
+    <stop offset="1" stop-color="#000" stop-opacity="0.3"/></linearGradient>
+  <pattern id="stripes" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+    <rect width="7" height="18" fill="#fff" opacity="0.09"/></pattern>
+  <linearGradient id="petalGrad" x1="0.5" y1="1" x2="0.5" y2="0">
+    <stop offset="0" stop-color="#ec5f97"/><stop offset="0.35" stop-color="#ff9ec6"/>
+    <stop offset="0.8" stop-color="#ffe0ee"/><stop offset="1" stop-color="#fff6fa"/></linearGradient>
+  <filter id="neon" x="-30%" y="-10%" width="160%" height="120%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="b1"/>
+    <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="b2"/>
+    <feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="24"/></filter>
+  <filter id="drop" x="-20%" y="-20%" width="140%" height="140%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="3"/><feOffset dy="3"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.45"/></feComponentTransfer>
+    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>`;
+
+// ---------------------------------------------------------------- layers
+function back() {
+  seed = 11;
+  let s = `<circle cx="512" cy="480" r="430" fill="url(#moon)"/>
+           <circle cx="512" cy="480" r="430" fill="none" stroke="#ff8fc0" stroke-opacity="0.22" stroke-width="2"/>`;
+  // canopy dome (rear + mid), the bar stands in front of it
+  const cx = 512, cy = 330;
+  for (let i = 0; i < 24; i++) {
+    const a = Math.PI + (i / 23) * Math.PI, r = 0.7 + rnd() * 0.3;
+    s += lobe(cx + Math.cos(a) * 380 * r, cy + Math.sin(a) * 215 * r + 80, 70 + rnd() * 30, 0);
+  }
+  for (let i = 0; i < 9; i++) s += lobe(cx - 320 + i * 80 + rnd() * 16, cy + 120 + rnd() * 40, 62, 0);
+  for (let i = 0; i < 16; i++) s += lobe(cx - 330 + rnd() * 660, cy - 100 + rnd() * 200, 58 + rnd() * 24, 1);
+  // trunk mass + centre branch behind the bar
+  s += `<g filter="url(#drop)">`;
+  for (const [p, a, b] of ROOTS) s += `<path d="${ribbon(p, a, b)}" fill="url(#bark)"/>`;
+  s += `<path d="${ribbon(...TRUNK_BACK)}" fill="url(#barkDark)"/><path d="${ribbon(...CENTRE_UP)}" fill="url(#barkDark)"/>`;
+  s += `</g>`;
+  // bar frame + track
+  const f = FRAME, t = TRACK;
+  s += `<g filter="url(#drop)">
+    <rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="${f.r}" fill="url(#metal)" stroke="#0f1013" stroke-width="2"/>
+    <rect x="${f.x + 2}" y="${f.y + 2}" width="${f.w - 4}" height="${f.h - 4}" rx="${f.r - 2}" fill="none" stroke="#6d737d"
+          stroke-opacity="0.5" stroke-width="1"/></g>
+    <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}" fill="#0b0c10"/>
+    <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}" fill="url(#scan)"/>`;
+  for (const [x, y] of [[468, 268], [556, 268], [468, 912], [556, 912]]) s += bolt(x, y);
   return s;
 }
 
-// ------------------------------------------------------------------------------- overlay
+function fill(w = TRACK.w, h = TRACK.h) {
+  return `<clipPath id="fr"><rect width="${w}" height="${h}" rx="${TRACK.r}"/></clipPath><g clip-path="url(#fr)">
+    <rect width="${w}" height="${h}" fill="url(#fillGrad)"/><rect width="${w}" height="${h}" fill="url(#stripes)"/>
+    <rect width="${w}" height="${h}" fill="url(#fillEdge)"/></g>`;
+}
+function cap(w = TRACK.w) {
+  return `<g filter="url(#neon)"><rect x="4" y="12" width="${w - 8}" height="4" rx="2" fill="#fff"/></g>
+          <rect x="4" y="13" width="${w - 8}" height="2" rx="1" fill="#fff"/>`;
+}
+
 function overlay() {
   const t = TRACK;
-  let s = "";
-  // MAX zone (top 6%)
-  const maxH = t.h * 0.06;
-  s += `<clipPath id="trackClip"><rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}"/></clipPath>
-        <g clip-path="url(#trackClip)">
-          <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${maxH}" fill="url(#hatch)"/>
-          <rect x="${t.x}" y="${t.y + maxH - 1}" width="${t.w}" height="1.5" fill="#ffd1e4" opacity="0.7"/>
-          <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" fill="url(#trackShade)"/>
-          <rect x="${t.x + 7}" y="${t.y + 10}" width="9" height="${t.h - 20}" rx="4.5" fill="#ffffff" opacity="0.07"/>
-        </g>
-        <text x="${t.x + t.w / 2}" y="${t.y + maxH / 2 + 5}" text-anchor="middle" class="lat" font-size="14"
-              letter-spacing="3" fill="#fff" opacity="0.85">MAX</text>`;
-  // ticks
+  let s = `<clipPath id="tc"><rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}"/></clipPath>
+    <g clip-path="url(#tc)">
+      <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h * 0.06}" fill="url(#hatch)"/>
+      <rect x="${t.x}" y="${t.y + t.h * 0.06 - 1}" width="${t.w}" height="1.5" fill="#ffd1e4" opacity="0.7"/>
+      <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" fill="url(#trackShade)"/>
+      <rect x="${t.x + 6}" y="${t.y + 10}" width="8" height="${t.h - 20}" rx="4" fill="#fff" opacity="0.07"/></g>`;
   for (let i = 1; i < 20; i++) {
-    const y = t.y + t.h - (t.h * i) / 20;
-    const major = i % 2 === 0, quarter = i % 5 === 0;
-    const len = quarter ? 22 : major ? 14 : 8;
-    const op = quarter ? 0.75 : major ? 0.5 : 0.3;
-    s += `<rect x="${t.x + t.w - 6 - len}" y="${y - 0.9}" width="${len}" height="${quarter ? 2.2 : 1.6}" fill="#fff" opacity="${op}"/>
-          <rect x="${t.x + 6}" y="${y - 0.7}" width="${len * 0.5}" height="1.4" fill="#fff" opacity="${op * 0.6}"/>`;
+    const y = t.y + t.h - (t.h * i) / 20, q = i % 5 === 0, m = i % 2 === 0;
+    const len = q ? 18 : m ? 11 : 6, op = q ? 0.75 : m ? 0.5 : 0.3;
+    s += `<rect x="${t.x + t.w - 5 - len}" y="${y - 0.9}" width="${len}" height="${q ? 2.2 : 1.6}" fill="#fff" opacity="${op}"/>`;
   }
-  // neon tube (pink LED, white core)
-  const n = rrect(t, 4);
-  s += `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${n.r}" fill="none" stroke="#ff5fa2"
-              stroke-width="3.6" filter="url(#neon)"/>
-        <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${n.r}" fill="none" stroke="#fff2f8"
-              stroke-width="1.3"/>`;
-  // tategaki plate (vertical sign) hanging on the brackets
-  s += `<g filter="url(#shadow)">
-          <rect x="190" y="366" width="44" height="246" rx="6" fill="url(#plate)" stroke="#2a1219" stroke-width="2"/>
-          <rect x="194" y="370" width="36" height="238" rx="4" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1"/>
-        </g>`;
-  const chars = ["桜", "パ", "ワ", "ー"];
-  chars.forEach((c, i) => {
-    const y = 412 + i * 54;
-    if (c === "ー") {
-      s += `<rect x="209.5" y="${y - 24}" width="5" height="30" rx="2.5" fill="#fff"/>`;
-    } else {
-      s += `<text x="212" y="${y}" text-anchor="middle" class="jp" font-size="31" fill="#fff" stroke="#fff"
-                  stroke-width="0.9" paint-order="stroke">${c}</text>`;
-    }
-  });
-  s += bolt(212, 378, 3) + bolt(212, 600, 3);
-  // badge: sakura-shaped emblem with 力 (power)
-  seed = 3;
-  let badge = `<g transform="translate(310,962)" filter="url(#shadow)">`;
-  for (let i = 0; i < 5; i++) {
-    badge += `<path d="${PETAL}" transform="rotate(${i * 72}) scale(50)" fill="url(#petalGrad)"
-                stroke="#2a1219" stroke-width="${2 / 50}"/>`;
+  s += `<rect x="${t.x + 4}" y="${t.y + 4}" width="${t.w - 8}" height="${t.h - 8}" rx="${t.r - 4}" fill="none"
+              stroke="#ff5fa2" stroke-width="3.4" filter="url(#neon)"/>
+        <rect x="${t.x + 4}" y="${t.y + 4}" width="${t.w - 8}" height="${t.h - 8}" rx="${t.r - 4}" fill="none"
+              stroke="#fff2f8" stroke-width="1.2"/>`;
+  // trunk strands hugging the bar, branches, vines over the frame border
+  s += `<g filter="url(#drop)">`;
+  s += `<path d="${ribbon(...STRAND_L)}" fill="url(#bark)"/><path d="${ribbon(...STRAND_R)}" fill="url(#bark)"/>`;
+  for (const [p, a, b] of BRANCHES) s += `<path d="${ribbon(p, a, b, 28)}" fill="url(#bark)"/>`;
+  for (const [p, a, b] of VINES) s += `<path d="${ribbon(p, a, b, 16)}" fill="url(#bark)"/>`;
+  s += `</g>`;
+  for (const p of [STRAND_L, STRAND_R]) {
+    const q = p[0].map(([x, y]) => [x - 8, y]);
+    s += `<path d="M${q[0]} C${q[1]} ${q[2]} ${q[3]}" fill="none" stroke="#9a7686" stroke-opacity="0.45" stroke-width="2.2" stroke-linecap="round"/>`;
   }
-  badge += `<circle r="27" fill="#16181d" stroke="#2a1219" stroke-width="2"/>
-            <circle r="23" fill="none" stroke="#ff5fa2" stroke-width="2.4" filter="url(#neon)"/>
-            <circle r="23" fill="none" stroke="#fff2f8" stroke-width="0.9"/>
-            <text x="0" y="11" text-anchor="middle" class="jp" font-size="31" fill="#fff" stroke="#fff"
-                  stroke-width="1" paint-order="stroke">力</text></g>`;
-  s += badge;
-  s += sakura();
-  return s;
+  // front blossom clusters framing the top of the bar (kept off the track)
+  seed = 23;
+  let fr = "";
+  for (const [x, y, sp] of [[400, 252, 48], [624, 252, 48], [430, 190, 40], [594, 190, 40], [512, 150, 44],
+                            [300, 330, 46], [724, 330, 46], [196, 290, 44], [828, 290, 44], [210, 430, 42],
+                            [814, 430, 42], [348, 432, 38], [676, 432, 38]])
+    fr += lobe(x, y, sp, 2, true);
+  for (let i = 0; i < 30; i++) {
+    const a = Math.PI + rnd() * Math.PI, r = 0.3 + rnd() * 0.7;
+    const x = 512 + Math.cos(a) * 410 * r, y = 330 + Math.sin(a) * 230 * r + 80 + rnd() * 60;
+    if (inBar(x, y, 10)) continue;
+    fr += blossom(x, y, 9 + rnd() * 9, rnd() * 72);
+  }
+  // a few blossoms sitting on the bar's top corners and on the vines
+  fr += blossom(466, 254, 15, 10) + blossom(560, 250, 17, 40) + blossom(452, 816, 12, 20) + blossom(566, 626, 11, 50);
+  // petal pile + falling petals
+  fr += `<ellipse cx="512" cy="1004" rx="260" ry="16" fill="#e9799f" opacity="0.55"/>
+         <ellipse cx="512" cy="1000" rx="200" ry="10" fill="#ffb3cf" opacity="0.6"/>`;
+  for (let i = 0; i < 24; i++) fr += looseP(300 + rnd() * 424, 992 + rnd() * 16, rnd() * 360, 7 + rnd() * 5, 0.9);
+  for (const [x, y, r, k] of [[170, 620, 30, 15], [860, 600, -20, 13], [250, 780, 60, 12], [780, 790, 10, 14],
+                              [130, 860, -40, 10], [900, 880, 80, 11], [350, 680, 15, 9], [680, 700, -60, 10]])
+    fr += looseP(x, y, r, k);
+  return s + `<g filter="url(#drop)">${fr}</g>`;
 }
 
-// ------------------------------------------------------------------------------- glow / marker / petal
 function glow() {
   const f = FRAME;
-  return `<rect x="${f.x - 6}" y="${f.y - 6}" width="${f.w + 12}" height="${f.h + 12}" rx="${f.r + 6}" fill="none"
-                stroke="#ff4f9a" stroke-width="16" filter="url(#soft)" opacity="0.9"/>
-          <rect x="${f.x - 2}" y="${f.y - 2}" width="${f.w + 4}" height="${f.h + 4}" rx="${f.r + 2}" fill="none"
-                stroke="#ffc2dc" stroke-width="3" filter="url(#neon)" opacity="0.9"/>`;
+  return `<g filter="url(#soft)">
+      <ellipse cx="512" cy="340" rx="430" ry="250" fill="none" stroke="#ff4f9a" stroke-width="36" opacity="0.7"/>
+      <rect x="${f.x - 10}" y="${f.y - 10}" width="${f.w + 20}" height="${f.h + 20}" rx="${f.r + 10}" fill="none"
+            stroke="#ff4f9a" stroke-width="22" opacity="0.95"/></g>`;
 }
 function marker() {
-  return `<g filter="url(#dropSoft)">
-    <path d="M2,8 L22,20 L2,32 Z" fill="#ff7a1a" stroke="#2a1219" stroke-width="1.5"/>
-    <path d="M158,8 L138,20 L158,32 Z" fill="#ff7a1a" stroke="#2a1219" stroke-width="1.5"/>
-  </g>
-  <rect x="24" y="18.5" width="112" height="3" fill="#fff" opacity="0.9"/>
-  <rect x="24" y="18.5" width="112" height="3" fill="#ffffff" filter="url(#neon)" opacity="0.6"/>`;
+  return `<g filter="url(#drop)">
+    <path d="M2,6 L22,16 L2,26 Z" fill="#ff7a1a" stroke="#2a1219" stroke-width="1.5"/>
+    <path d="M118,6 L98,16 L118,26 Z" fill="#ff7a1a" stroke="#2a1219" stroke-width="1.5"/></g>
+    <rect x="24" y="14.5" width="72" height="3" fill="#fff" opacity="0.95"/>`;
 }
 function petal() {
   return `<path d="${PETAL}" transform="translate(64,112) scale(100)" fill="url(#petalGrad)" stroke="#d6457f"
                 stroke-opacity="0.55" stroke-width="0.012"/>`;
 }
 
-// ------------------------------------------------------------------------------- preview
-function meter(p, glowOn) {
-  const t = TRACK, fh = t.h * p;
-  return `${glowOn ? glow() : ""}${back()}
-    <clipPath id="fc${Math.round(p * 100)}"><rect x="${t.x}" y="${t.y + t.h - fh}" width="${t.w}" height="${fh}"/></clipPath>
-    <clipPath id="tc${Math.round(p * 100)}"><rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}"/></clipPath>
-    <g clip-path="url(#tc${Math.round(p * 100)})"><g clip-path="url(#fc${Math.round(p * 100)})">
-      <g transform="translate(${t.x},${t.y})">${fill()}</g></g>
-      <g transform="translate(${t.x},${t.y + t.h - fh - 14})">${cap()}</g></g>
-    <g transform="translate(${t.x + t.w / 2 - 80},${t.y + t.h * 0.1 - 20})">${marker()}</g>
-    ${overlay()}`;
+function meter(p, k) {
+  const t = TRACK, fh = t.h * p, my = t.y + t.h * 0.1;
+  return `${p >= 1 ? glow() : ""}${back()}
+    <clipPath id="fc${k}"><rect x="${t.x}" y="${t.y + t.h - fh}" width="${t.w}" height="${fh}"/></clipPath>
+    <g clip-path="url(#fc${k})"><g transform="translate(${t.x},${t.y})">${fill()}</g></g>
+    ${p > 0.01 && p < 0.99 ? `<g transform="translate(${t.x},${t.y + t.h - fh - 14})">${cap()}</g>` : ""}
+    ${overlay()}
+    <g transform="translate(${t.x + t.w / 2 - 60},${my - 16})">${marker()}</g>`;
 }
 function preview() {
-  const bg = `<defs><radialGradient id="bgG" cx="0.5" cy="0.35" r="0.8">
-      <stop offset="0" stop-color="#2a2433"/><stop offset="1" stop-color="#0d0e12"/></radialGradient></defs>
-    <rect width="1536" height="1024" fill="url(#bgG)"/>`;
-  const label = (x, txt) => `<text x="${x}" y="1004" text-anchor="middle" class="lat" font-size="20" fill="#fff" opacity="0.6">${txt}</text>`;
-  return bg + [0.32, 0.72, 1.0].map((p, i) =>
-    `<g transform="translate(${i * 512},0) scale(0.94) translate(16,0)">${meter(p, p === 1.0)}</g>${label(i * 512 + 256, Math.round(p * 100) + "%")}`).join("");
+  return `<rect width="3072" height="1024" fill="#101116"/>` +
+    [0.3, 0.68, 1.0].map((p, i) => `<g transform="translate(${i * 1024},0)">${meter(p, i)}</g>`).join("");
 }
 
-// ------------------------------------------------------------------------------- render
 const q = new URLSearchParams(location.search);
 const layer = q.get("layer") || "preview";
-const sizes = { back: [W, H], overlay: [W, H], glow: [W, H], fill: [TRACK.w, TRACK.h], cap: [TRACK.w, 28],
-                marker: [160, 40], petal: [128, 128], preview: [1536, 1024] };
+const sizes = { back: [S, S], overlay: [S, S], glow: [S, S], fill: [TRACK.w, TRACK.h], cap: [TRACK.w, 28],
+                marker: [120, 32], petal: [128, 128], preview: [3072, 1024] };
 const [vw, vh] = sizes[layer];
-const body = { back, overlay, glow, fill, cap, marker, petal, preview }[layer]();
+const body = { back, fill, cap, overlay, glow, marker, petal, preview }[layer]();
 document.getElementById("root").innerHTML =
   `<svg xmlns="http://www.w3.org/2000/svg" width="${vw}" height="${vh}" viewBox="0 0 ${vw} ${vh}">${defs}${body}</svg>`;
 window.SIZE = [vw, vh];

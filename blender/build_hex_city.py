@@ -3375,6 +3375,75 @@ def tri_count(ob):
     return sum(len(p.vertices) - 2 for p in ob.data.polygons)
 
 
+EXPORT_KEYS = ["MAIN_GROUND", "PRACTICE_AREA", "GROUND_DETAILS", "BUILDINGS_FOREGROUND", "BUILDINGS_MIDGROUND",
+               "SKYLINE_BACKGROUND", "SIGNAGE", "BILLBOARD_SCREENS", "STRUCTURES"]
+
+
+def bake_palette_for_roblox(cell=16, grid=16):
+    """Roblox's importer ignores plain material colours (everything arrives grey) but keeps image
+    textures. Bake every flat material into one palette texture and point each face's UVs at its
+    colour swatch, so every mesh imports already coloured. Atlas-textured signs/screens are untouched."""
+    obs = []
+    for key in EXPORT_KEYS:
+        obs += [o for o in all_objects(COLL[key]) if o.type == "MESH"]
+    names = sorted({m.name for o in obs for m in o.data.materials if m and m.name in PALETTE})
+    if len(names) > grid * grid:
+        raise RuntimeError("palette too small")
+    size = cell * grid
+    img = bpy.data.images.new("HEX_Palette", size, size, alpha=False)
+    px = [0.0] * (size * size * 4)
+    idx = {}
+    for i, n in enumerate(names):
+        hx, _, _, ehex, _, _ = PALETTE[n]
+        h = (ehex or hx).lstrip("#")
+        rgb = [int(h[k:k + 2], 16) / 255.0 for k in (0, 2, 4)]
+        col, row = i % grid, i // grid
+        idx[n] = ((col + 0.5) / grid, (row + 0.5) / grid)
+        for y in range(row * cell, (row + 1) * cell):
+            for x in range(col * cell, (col + 1) * cell):
+                o = (y * size + x) * 4
+                px[o:o + 4] = rgb + [1.0]
+    img.pixels = px
+    path = os.path.join(SCRIPT_DIR, "textures", "palette.png")
+    img.filepath_raw = path
+    img.file_format = "PNG"
+    img.save()
+    pm = bpy.data.materials.new("HEX_Palette")
+    try:
+        pm.use_nodes = True
+    except Exception:
+        pass
+    p = _principled(pm)
+    p.inputs["Roughness"].default_value = 0.85
+    tx = pm.node_tree.nodes.new("ShaderNodeTexImage")
+    tx.image = img
+    tx.interpolation = "Closest"
+    pm.node_tree.links.new(tx.outputs["Color"], p.inputs["Base Color"])
+    done = set()
+    for o in obs:
+        me = o.data
+        if me.name in done:
+            continue
+        mats = [m.name if m else "" for m in me.materials]
+        if not mats or not all(m in idx for m in mats):
+            continue
+        done.add(me.name)
+        if not me.uv_layers:
+            me.uv_layers.new(name="UVMap")
+        uv = me.uv_layers.active
+        data = [0.0] * (len(me.loops) * 2)
+        for poly in me.polygons:
+            u, v = idx[mats[poly.material_index]]
+            for li in poly.loop_indices:
+                data[li * 2] = u
+                data[li * 2 + 1] = v
+        uv.data.foreach_set("uv", data)
+        me.materials.clear()
+        me.materials.append(pm)
+        me.polygons.foreach_set("material_index", [0] * len(me.polygons))
+    print("== palette baked: %d colours, %d meshes -> %s" % (len(names), len(done), path))
+
+
 def export_fbx():
     outdir = os.path.join(REPO_DIR, "export", "fbx")
     os.makedirs(outdir, exist_ok=True)
@@ -3486,10 +3555,11 @@ def main():
         path = os.path.join(REPO_DIR, "blender", "HEX_City_Map.blend")
         bpy.ops.wm.save_as_mainfile(filepath=path, compress=True)
         print("== saved", path)
-    if DO_EXPORT:
-        report["fbx"] = export_fbx()
     if DO_RENDER:
         render_views(cams)
+    if DO_EXPORT:  # last: the palette bake rewrites materials/UVs for Roblox (the saved .blend keeps the originals)
+        bake_palette_for_roblox()
+        report["fbx"] = export_fbx()
     print("== done in %.1fs" % (time.time() - t0))
 
 
