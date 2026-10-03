@@ -1589,6 +1589,15 @@ def curved_screen(name, coll, M, cx, cy, r, a0, a1, z0, z1, cell, seg=14):
     return ob
 
 
+def attach(child, parent):
+    """Parent keeping the world placement (parents only carry a translation)."""
+    if child is None or parent is None:
+        return child
+    child.parent = parent
+    child.location = child.location - parent.location
+    return child
+
+
 def pick(rng, table):
     tot = sum(w for _, w in table)
     r = rng.uniform(0, tot)
@@ -1650,26 +1659,27 @@ class Bld:
         o = M @ Vector(origin_local)
         ob = self.mb.build(self.name, coll, origin=(o.x, o.y, 0.0))
         ob["height_studs"] = round(self.H, 1)
+        # signs, screens and LEDs are children of their building so they import together, already aligned
         if not self.led.empty():
-            self.led.build(self.name + "_LED", COLL["LED_STRIPS"], origin=(o.x, o.y, 0.0))
+            attach(self.led.build(self.name + "_LED", COLL["LED_STRIPS"], origin=(o.x, o.y, 0.0)), ob)
         for (cat, c, f, w, h, thick, atlas, cell, lit, two) in self.signs:
             fw = R3 @ f
             if atlas == "H":
                 mat = "SignH_Lit" if lit else "SignH"
             else:
                 mat = "SignV_Lit" if lit else "SignV"
-            SIGNS.append(board_object(_next_name("Sign_" + cat), SIGN_COLL[cat], M @ c, fw, w, h, thick, mat,
-                                      atlas, cell, two))
+            SIGNS.append(attach(board_object(_next_name("Sign_" + cat), SIGN_COLL[cat], M @ c, fw, w, h, thick, mat,
+                                             atlas, cell, two), ob))
         for (cat, c, f, w, h) in self.screens:
             if cat is None:
                 cat = "Landmark" if w >= 40 else "Large" if w >= 22 else "Medium" if w >= 7 else "Small"
             ob_s = board_object(_next_name("Billboard_" + cat), SCREEN_COLL[cat], M @ c, R3 @ f, w, h, 0.5,
                                 "Screen_Atlas", "S", self.rng.randrange(16))
             ob_s["display_face"] = "local +Y (Roblox: Front)"
-            SCREENS.append(ob_s)
+            SCREENS.append(attach(ob_s, ob))
         for (cx, cy, r, a0, a1, z0, z1) in self.curved:
-            curved_screen(_next_name("Billboard_LandmarkCurved"), "SCREENS_LANDMARK", M, cx, cy, r, a0, a1, z0, z1,
-                          self.rng.randrange(16))
+            attach(curved_screen(_next_name("Billboard_LandmarkCurved"), "SCREENS_LANDMARK", M, cx, cy, r, a0, a1,
+                                 z0, z1, self.rng.randrange(16)), ob)
         for (kind, p, f) in self.inst:
             fw = R3 @ f
             instance(kind, M @ p, math.atan2(fw.x, -fw.y), coll, parent=ob)
@@ -2992,6 +3002,9 @@ def side_frames(lay, off=0.0, ext=0.0):
 
 
 
+SKY_ADS = []
+
+
 def skyline_ads(mb, rng, lay, cx, cy, fw, fd, H, inner_x, inner_y):
     """Big digital billboards high up on the park-facing side of background towers."""
     p = 0.9 if H > 260 else 0.7 if H > 200 else 0.35
@@ -3029,6 +3042,7 @@ def skyline_ads(mb, rng, lay, cx, cy, fw, fd, H, inner_x, inner_y):
                           "Screen_Atlas", "S", rng.randrange(16))
         ob["display_face"] = "local +Y (Roblox: Front)"
         SCREENS.append(ob)
+        SKY_ADS.append(ob)
 
 
 def build_skyline(lay, rng):
@@ -3062,6 +3076,7 @@ def build_skyline(lay, rng):
     ad_rng = random.Random(SEED + 404)  # separate stream: adding ads never moves a tower
     for key in sorted(sectors):
         mb = MB()
+        SKY_ADS.clear()
         for (cx, cy, fw, fd, H) in sectors[key]:
             skyline_ads(mb, ad_rng, lay, cx, cy, fw, fd, H, inner_x, inner_y)
             m = rng.choice(mats)
@@ -3089,6 +3104,8 @@ def build_skyline(lay, rng):
         ys = [s[1] for s in sectors[key]]
         o = (sum(xs) / len(xs), sum(ys) / len(ys), 0)
         ob = mb.build("Skyline_Sector_%02d" % (key + 1), COLL["SKYLINE_BACKGROUND"], origin=o)
+        for ad in SKY_ADS:
+            attach(ad, ob)
         out.append(ob)
     return out
 
@@ -3445,24 +3462,44 @@ def bake_palette_for_roblox(cell=16, grid=16):
 
 
 def export_fbx():
+    """One FBX per part (each building file carries its own signs, screens, LEDs and rooftop gear as
+    children, so nothing has to be lined up by hand) + one all-in-one file of the whole city."""
     outdir = os.path.join(REPO_DIR, "export", "fbx")
     os.makedirs(outdir, exist_ok=True)
+    for old in glob.glob(os.path.join(outdir, "*.fbx")):
+        os.remove(old)
+
+    def with_children(keys):
+        out = []
+        for key in keys:
+            for o in all_objects(COLL[key]):
+                if o.parent is None:
+                    out.append(o)
+                    out += list(o.children_recursive)
+        return out
+
+    parts = [("MAIN_GROUND", ["MAIN_GROUND"]), ("PRACTICE_AREA", ["PRACTICE_AREA"]),
+             ("GROUND_DETAILS", ["GROUND_DETAILS"]), ("BUILDINGS_FOREGROUND", ["BUILDINGS_FOREGROUND"]),
+             ("BUILDINGS_MIDGROUND", ["BUILDINGS_MIDGROUND"]), ("SKYLINE_BACKGROUND", ["SKYLINE_BACKGROUND"]),
+             ("STRUCTURES", ["STRUCTURES"])]
+    loose = [o for k in ("SIGNAGE", "BILLBOARD_SCREENS") for o in all_objects(COLL[k]) if o.parent is None]
+    if loose:
+        parts.append(("LOOSE_SIGNS", ["SIGNAGE", "BILLBOARD_SCREENS"]))
+    jobs = [("00_FULL_CITY", with_children(EXPORT_KEYS))] + [
+        ("%02d_%s" % (i + 1, name), with_children(keys)) for i, (name, keys) in enumerate(parts)]
     files = []
-    order = ["MAIN_GROUND", "PRACTICE_AREA", "GROUND_DETAILS", "BUILDINGS_FOREGROUND", "BUILDINGS_MIDGROUND",
-             "SKYLINE_BACKGROUND", "SIGNAGE", "BILLBOARD_SCREENS", "STRUCTURES"]
-    for i, key in enumerate(order):
-        obs = all_objects(COLL[key])
+    for tag, obs in jobs:
         bpy.ops.object.select_all(action="DESELECT")
-        for o in obs:
+        for o in set(obs):
             o.select_set(True)
-        path = os.path.join(outdir, "HEX_City_%02d_%s.fbx" % (i + 1, key))
+        path = os.path.join(outdir, "HEX_City_%s.fbx" % tag)
         bpy.ops.export_scene.fbx(filepath=path, use_selection=True, object_types={"MESH", "EMPTY"},
                                  apply_unit_scale=True, apply_scale_options="FBX_SCALE_UNITS",
                                  axis_forward="-Z", axis_up="Y", use_mesh_modifiers=True,
                                  mesh_smooth_type="FACE", use_triangles=True, add_leaf_bones=False,
                                  bake_anim=False, path_mode="COPY", embed_textures=True)
         files.append(os.path.relpath(path, REPO_DIR))
-        print("   exported", path)
+        print("   exported %s (%d objects)" % (path, len(set(obs))))
     bpy.ops.object.select_all(action="DESELECT")
     return files
 

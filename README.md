@@ -184,6 +184,14 @@ See `layout_report.json → sign_and_screen_counts` for exact counts.
 ---
 
 ## Importing into Roblox Studio
+> **Signs are attached to their buildings.** Every sign, screen, LED strip and piece of rooftop gear is
+> a *child of its building*, so it imports inside that building's model, already in place. You never
+> line up decals by hand. Skyline ads are children of their skyline sector.
+>
+> **Easiest:** import **`HEX_City_00_FULL_CITY.fbx`** (the whole map in one file). Or import the parts
+> `01`–`07`. They all share the same origin: turn on **"Insert Using Scene Position"** (File General)
+> in the importer so the pieces line up with each other.
+
 > **Colours:** Roblox's importer ignores plain material colours (that made the first export import grey).
 > The FBX files are now exported with every colour baked into one small palette texture
 > (`blender/textures/palette.png`, embedded in each FBX), so meshes arrive coloured. After importing,
