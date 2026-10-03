@@ -595,7 +595,7 @@ def setup_scene():
         c = bpy.data.collections.new(name)
         sg.children.link(c)
         COLL[name] = c
-    for name in ("SCREENS_LANDMARK", "SCREENS_LARGE", "SCREENS_MEDIUM", "SCREENS_SMALL"):
+    for name in ("SCREENS_LANDMARK", "SCREENS_LARGE", "SCREENS_MEDIUM", "SCREENS_SMALL", "SCREENS_SKYLINE"):
         c = bpy.data.collections.new(name)
         COLL["BILLBOARD_SCREENS"].children.link(c)
         COLL[name] = c
@@ -2992,6 +2992,45 @@ def side_frames(lay, off=0.0, ext=0.0):
 
 
 
+def skyline_ads(mb, rng, lay, cx, cy, fw, fd, H, inner_x, inner_y):
+    """Big digital billboards high up on the park-facing side of background towers."""
+    p = 0.9 if H > 260 else 0.7 if H > 200 else 0.35
+    if rng.random() > p:
+        return
+    ex, ey = abs(cx) - inner_x, abs(cy) - inner_y
+    faces = []
+    if ex >= ey or rng.random() < 0.35:
+        faces.append(("x", -math.copysign(1, cx)))
+    if ey > ex or rng.random() < 0.35:
+        faces.append(("y", -math.copysign(1, cy)))
+    for i, (axis, sgn) in enumerate(faces):
+        face_w = fd if axis == "x" else fw
+        if rng.random() < 0.6:
+            sw = face_w * rng.uniform(0.78, 0.95)
+            sh = sw * rng.uniform(0.55, 0.85)
+        else:
+            sw = face_w * rng.uniform(0.4, 0.55)
+            sh = sw * rng.uniform(2.0, 3.2)
+        zc = min(H * rng.uniform(0.72, 0.9), H - 5 - sh / 2)
+        if zc - sh / 2 < 45:
+            continue
+        off = (fw if axis == "x" else fd) / 2
+        if axis == "x":
+            c = Vector((cx + sgn * (off + 1.3), cy, zc))
+            facing = (sgn, 0, 0)
+            mb.box(cx + sgn * off, cy - sw / 2 - 1, zc - sh / 2 - 1, cx + sgn * (off + 1.0), cy + sw / 2 + 1,
+                   zc + sh / 2 + 1, "DarkMetal")
+        else:
+            c = Vector((cx, cy + sgn * (off + 1.3), zc))
+            facing = (0, sgn, 0)
+            mb.box(cx - sw / 2 - 1, cy + sgn * off, zc - sh / 2 - 1, cx + sw / 2 + 1, cy + sgn * (off + 1.0),
+                   zc + sh / 2 + 1, "DarkMetal")
+        ob = board_object(_next_name("Billboard_Skyline"), "SCREENS_SKYLINE", c, facing, sw, sh, 0.6,
+                          "Screen_Atlas", "S", rng.randrange(16))
+        ob["display_face"] = "local +Y (Roblox: Front)"
+        SCREENS.append(ob)
+
+
 def build_skyline(lay, rng):
     FX, FY = lay.FX, lay.FY
     inner_x, inner_y = FX + MG_OFF + 150, FY + MG_OFF + 150
@@ -3020,9 +3059,11 @@ def build_skyline(lay, rng):
         x += cell
     out = []
     mats = ["Skyline_A", "Skyline_B", "Skyline_C", "Skyline_Glass"]
+    ad_rng = random.Random(SEED + 404)  # separate stream: adding ads never moves a tower
     for key in sorted(sectors):
         mb = MB()
         for (cx, cy, fw, fd, H) in sectors[key]:
+            skyline_ads(mb, ad_rng, lay, cx, cy, fw, fd, H, inner_x, inner_y)
             m = rng.choice(mats)
             mb.box(cx - fw / 2, cy - fd / 2, Z0, cx + fw / 2, cy + fd / 2, H, m, skip=("-z",))
             # coarse horizontal bands

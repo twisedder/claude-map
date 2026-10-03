@@ -97,9 +97,11 @@ cables. The side streets have concrete **utility poles** and wires.
 | + | Chamfered department store with LED bands and a giant vertical sign; 1980s round-corner fashion building | NW / SW corners |
 
 **Three depth layers:** detailed foreground → medium-detail Tokyo midground (tile / balcony / glass /
-louver, rooftop sign lattices, full street level only where a street ends on it) → **unchanged**
-simple background skyline. Its random state is frozen in `blender/skyline_rng_state.json`, so it is
-identical to the first pass.
+louver, rooftop sign lattices, full street level only where a street ends on it) → simple background
+skyline. The skyline's **tower layout is unchanged**: its random state is frozen in
+`blender/skyline_rng_state.json`. It now carries **digital billboards** (`Billboard_Skyline_###`, wide
+and tall-vertical) high up on the park-facing side of the towers, so the ads keep layering all the way
+to the horizon.
 
 Cyberpunk stays at roughly 15%: screens, LED edge strips, a few neon blades and light bands. The
 architecture itself stays believable.
@@ -160,7 +162,8 @@ HEX_CITY_MAP
 │  ├─ SCREENS_LANDMARK       Billboard_Landmark_###, Billboard_LandmarkCurved_001
 │  ├─ SCREENS_LARGE          Billboard_Large_###
 │  ├─ SCREENS_MEDIUM         Billboard_Medium_###
-│  └─ SCREENS_SMALL          Billboard_Small_###
+│  ├─ SCREENS_SMALL          Billboard_Small_###
+│  └─ SCREENS_SKYLINE        Billboard_Skyline_###   (ads on the background towers)
 ├─ STRUCTURES             light masts, RailViaduct_West, Skybridge_North, utility poles + overhead lines
 └─ GROUND_DETAILS         expansion joints, drain channels, plaza curb, street paint
 SCALE_REFERENCE (not exported)   5.2-stud avatar dummies, court capacity ghosts, your court FBX
@@ -199,12 +202,12 @@ See `layout_report.json → sign_and_screen_counts` for exact counts.
      inside the park.
 
 ### Performance
-* ~558k triangles in total, and no single mesh is over ~8k triangles or larger than 2048 studs
+* ~570k triangles in total, and no single mesh is over ~8k triangles or larger than 2048 studs
   (see `layout_report.json`).
 * Detail comes from shallow, repeated modules (window modules, shopfront units, sign boxes, balcony
   bays) and instanced meshes (rooftop HVAC, water tanks, antennas, vending machines, utility poles,
   light masts), not from dense geometry. There are no interiors and no subdivision.
-* There are many small sign parts (~1,600). If you need fewer instances, the background-facing ones
+* There are many small sign parts (~1,600) and ~480 skyline billboards (plain 12-triangle boxes). If you need fewer instances, the background-facing ones
   (midground, rooftop) are the first candidates to merge or delete.
 
 ---
