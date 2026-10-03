@@ -1,0 +1,199 @@
+{
+  "units": "1 Blender unit = 1 Roblox stud",
+  "court": {
+    "source": "default budget (no FBX found)",
+    "length": 150.0,
+    "width": 85.0
+  },
+  "plaza": {
+    "size": [
+      970,
+      800
+    ],
+    "level": 0.0
+  },
+  "practice_area": {
+    "floor_size": [
+      420.0,
+      230.0
+    ],
+    "clean_floor_size": [
+      420.0,
+      190.0
+    ],
+    "level": -16.0,
+    "access": [
+      "Stair_Grand_North (64 wide)",
+      "Stair_East (36 wide)",
+      "Stair_West (36 wide)"
+    ]
+  },
+  "frontage_line": [
+    547.0,
+    462.0
+  ],
+  "street_width": 44.0,
+  "sidewalk_width": 18.0,
+  "court_capacity_main_level": 10,
+  "collections": {
+    "MAIN_GROUND": {
+      "objects": 72,
+      "triangles": 720,
+      "max_tris_per_object": 10
+    },
+    "PRACTICE_AREA": {
+      "objects": 12,
+      "triangles": 7138,
+      "max_tris_per_object": 3780
+    },
+    "GROUND_DETAILS": {
+      "objects": 4,
+      "triangles": 7972,
+      "max_tris_per_object": 6600
+    },
+    "BUILDINGS_FOREGROUND": {
+      "objects": 1094,
+      "triangles": 336424,
+      "max_tris_per_object": 8056
+    },
+    "BUILDINGS_MIDGROUND": {
+      "objects": 629,
+      "triangles": 128876,
+      "max_tris_per_object": 2366
+    },
+    "SKYLINE_BACKGROUND": {
+      "objects": 16,
+      "triangles": 35116,
+      "max_tris_per_object": 3166
+    },
+    "SIGNAGE": {
+      "objects": 1638,
+      "triangles": 30532,
+      "max_tris_per_object": 756
+    },
+    "BILLBOARD_SCREENS": {
+      "objects": 96,
+      "triangles": 1256,
+      "max_tris_per_object": 116
+    },
+    "STRUCTURES": {
+      "objects": 56,
+      "triangles": 9650,
+      "max_tris_per_object": 1826
+    }
+  },
+  "over_roblox_limits": [],
+  "screens": [
+    "Billboard_LandmarkCurved_001",
+    "Billboard_Landmark_001",
+    "Billboard_Landmark_002",
+    "Billboard_Landmark_003",
+    "Billboard_Landmark_004",
+    "Billboard_Landmark_005",
+    "Billboard_Landmark_006",
+    "Billboard_Landmark_007",
+    "Billboard_Landmark_008",
+    "Billboard_Large_001",
+    "Billboard_Large_002",
+    "Billboard_Large_003",
+    "Billboard_Large_004",
+    "Billboard_Large_005",
+    "Billboard_Large_006",
+    "Billboard_Large_007",
+    "Billboard_Large_008",
+    "Billboard_Large_009",
+    "Billboard_Large_010",
+    "Billboard_Large_011",
+    "Billboard_Large_012",
+    "Billboard_Large_013",
+    "Billboard_Large_014",
+    "Billboard_Large_015",
+    "Billboard_Large_016",
+    "Billboard_Large_017",
+    "Billboard_Large_018",
+    "Billboard_Large_019",
+    "Billboard_Large_020",
+    "Billboard_Large_021",
+    "Billboard_Large_022",
+    "Billboard_Large_023",
+    "Billboard_Medium_001",
+    "Billboard_Medium_002",
+    "Billboard_Medium_003",
+    "Billboard_Medium_004",
+    "Billboard_Medium_005",
+    "Billboard_Medium_006",
+    "Billboard_Medium_007",
+    "Billboard_Medium_008",
+    "Billboard_Medium_009",
+    "Billboard_Medium_010",
+    "Billboard_Medium_011",
+    "Billboard_Medium_012",
+    "Billboard_Medium_013",
+    "Billboard_Medium_014",
+    "Billboard_Medium_015",
+    "Billboard_Medium_016",
+    "Billboard_Medium_017",
+    "Billboard_Medium_018",
+    "Billboard_Medium_019",
+    "Billboard_Medium_020",
+    "Billboard_Medium_021",
+    "Billboard_Medium_022",
+    "Billboard_Medium_023",
+    "Billboard_Medium_024",
+    "Billboard_Medium_025",
+    "Billboard_Medium_026",
+    "Billboard_Medium_027",
+    "Billboard_Medium_028",
+    "Billboard_Medium_029",
+    "Billboard_Medium_030",
+    "Billboard_Medium_031",
+    "Billboard_Medium_032",
+    "Billboard_Small_001",
+    "Billboard_Small_002",
+    "Billboard_Small_003",
+    "Billboard_Small_004",
+    "Billboard_Small_005",
+    "Billboard_Small_006",
+    "Billboard_Small_007",
+    "Billboard_Small_008",
+    "Billboard_Small_009",
+    "Billboard_Small_010",
+    "Billboard_Small_011",
+    "Billboard_Small_012",
+    "Billboard_Small_013",
+    "Billboard_Small_014",
+    "Billboard_Small_015",
+    "Billboard_Small_016",
+    "Billboard_Small_017",
+    "Billboard_Small_018",
+    "Billboard_Small_019",
+    "Billboard_Small_020",
+    "Billboard_Small_021",
+    "Billboard_Small_022",
+    "Billboard_Small_023",
+    "Billboard_Small_024",
+    "Billboard_Small_025",
+    "Billboard_Small_026",
+    "Billboard_Small_027",
+    "Billboard_Small_028",
+    "Billboard_Small_029",
+    "Billboard_Small_030",
+    "Billboard_Small_031",
+    "Billboard_Small_032"
+  ],
+  "sign_and_screen_counts": {
+    "Billboard_Landmark": 8,
+    "Billboard_LandmarkCurved": 1,
+    "Billboard_Large": 23,
+    "Billboard_Medium": 32,
+    "Billboard_Small": 32,
+    "Sign_Blade": 29,
+    "Sign_BuildingName": 127,
+    "Sign_Directory": 49,
+    "Sign_Floor": 403,
+    "Sign_Rooftop": 80,
+    "Sign_Storefront": 712,
+    "Sign_Vertical": 84
+  },
+  "total_triangles": 557684
+}
