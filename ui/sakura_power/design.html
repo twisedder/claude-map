@@ -1,0 +1,326 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Sakura Power UI</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  svg { display: block; }
+  .jp { font-family: "IPAGothic", "IPAPGothic", "Noto Sans CJK JP", sans-serif; }
+  .lat { font-family: "DejaVu Sans", Arial, sans-serif; font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+/*
+  HEX! — Sakura Power meter (vector source).
+  Layers (all on a 512 x 1024 canvas unless noted):
+    back     frame body + dark track                      (bottom layer)
+    fill     power gradient, track-sized 92 x 722         (clipped from the bottom in Roblox)
+    cap      bright leading edge of the fill, 92 x 28
+    overlay  ticks, glass, neon tube, plate, badge, sakura branch (top layer)
+    glow     pink halo for full charge / perfect release
+    marker   perfect-release marker, 160 x 40
+    petal    single petal particle, 128 x 128
+    preview  composited previews on a dark background
+*/
+const W = 512, H = 1024;
+const FRAME = { x: 250, y: 190, w: 120, h: 750, r: 22 };
+const TRACK = { x: 264, y: 204, w: 92, h: 722, r: 12 };
+
+// deterministic jitter
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+const PETAL = "M0,0 C-0.45,-0.2 -0.62,-0.74 -0.3,-1.0 Q-0.12,-1.03 0,-0.84 Q0.12,-1.03 0.3,-1.0 C0.62,-0.74 0.45,-0.2 0,0 Z";
+
+const defs = `
+<defs>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#454a53"/><stop offset="0.18" stop-color="#2c3037"/>
+    <stop offset="0.55" stop-color="#1b1d22"/><stop offset="0.85" stop-color="#2a2e35"/>
+    <stop offset="1" stop-color="#3b4048"/>
+  </linearGradient>
+  <linearGradient id="metalV" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    <stop offset="1" stop-color="#000000" stop-opacity="0.25"/>
+  </linearGradient>
+  <radialGradient id="bolt" cx="0.35" cy="0.35" r="0.7">
+    <stop offset="0" stop-color="#c9ced6"/><stop offset="0.6" stop-color="#6c727c"/><stop offset="1" stop-color="#2a2d33"/>
+  </radialGradient>
+  <linearGradient id="trackShade" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#000" stop-opacity="0.55"/><stop offset="0.25" stop-color="#000" stop-opacity="0"/>
+    <stop offset="0.75" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.55"/>
+  </linearGradient>
+  <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse">
+    <rect width="4" height="1" fill="#ffffff" opacity="0.035"/>
+  </pattern>
+  <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect width="3" height="10" fill="#ff9fc9" opacity="0.28"/>
+  </pattern>
+  <linearGradient id="fillGrad" x1="0" y1="1" x2="0" y2="0">
+    <stop offset="0" stop-color="#9e0f47"/><stop offset="0.3" stop-color="#e02a74"/>
+    <stop offset="0.62" stop-color="#ff6aa9"/><stop offset="0.88" stop-color="#ffc0db"/>
+    <stop offset="1" stop-color="#fff3f8"/>
+  </linearGradient>
+  <linearGradient id="fillEdge" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#fff" stop-opacity="0.45"/><stop offset="0.12" stop-color="#fff" stop-opacity="0.12"/>
+    <stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="0.9" stop-color="#000" stop-opacity="0.18"/>
+    <stop offset="1" stop-color="#000" stop-opacity="0.3"/>
+  </linearGradient>
+  <pattern id="stripes" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(-35)">
+    <rect width="7" height="18" fill="#ffffff" opacity="0.09"/>
+  </pattern>
+  <linearGradient id="plate" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#f0347c"/><stop offset="0.55" stop-color="#d81b63"/><stop offset="1" stop-color="#a80f4c"/>
+  </linearGradient>
+  <linearGradient id="petalGrad" x1="0.5" y1="1" x2="0.5" y2="0">
+    <stop offset="0" stop-color="#ec5f97"/><stop offset="0.35" stop-color="#ff9ec6"/>
+    <stop offset="0.8" stop-color="#ffe0ee"/><stop offset="1" stop-color="#fff6fa"/>
+  </linearGradient>
+  <linearGradient id="petalGradPale" x1="0.5" y1="1" x2="0.5" y2="0">
+    <stop offset="0" stop-color="#f489b4"/><stop offset="0.5" stop-color="#ffc6de"/><stop offset="1" stop-color="#fffafc"/>
+  </linearGradient>
+  <radialGradient id="budGrad" cx="0.4" cy="0.35" r="0.8">
+    <stop offset="0" stop-color="#ffd2e5"/><stop offset="0.6" stop-color="#ff7fb2"/><stop offset="1" stop-color="#d13f7c"/>
+  </radialGradient>
+  <filter id="neon" x="-30%" y="-10%" width="160%" height="120%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="b1"/>
+    <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="b2"/>
+    <feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
+  <filter id="shadow" x="-30%" y="-10%" width="160%" height="120%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="6"/><feOffset dx="0" dy="6"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.55"/></feComponentTransfer>
+    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="dropSoft" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="2.5"/><feOffset dx="0" dy="2.5"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.45"/></feComponentTransfer>
+    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>`;
+
+const bolt = (x, y, r = 3.6) =>
+  `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#bolt)" stroke="#16181c" stroke-width="0.8"/>
+   <line x1="${x - r * 0.55}" y1="${y}" x2="${x + r * 0.55}" y2="${y}" stroke="#2a2d33" stroke-width="0.9"/>`;
+
+function rrect(o, inset = 0) {
+  return { x: o.x + inset, y: o.y + inset, w: o.w - 2 * inset, h: o.h - 2 * inset, r: Math.max(0, o.r - inset) };
+}
+
+// ------------------------------------------------------------------------------- back
+function back() {
+  const f = FRAME, t = TRACK;
+  let s = `<g filter="url(#shadow)">
+    <rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="${f.r}" fill="url(#metal)" stroke="#0f1013" stroke-width="2"/>
+    <rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="${f.r}" fill="url(#metalV)"/>
+    <rect x="${f.x + 2}" y="${f.y + 2}" width="${f.w - 4}" height="${f.h - 4}" rx="${f.r - 2}" fill="none" stroke="#6d737d" stroke-opacity="0.5" stroke-width="1"/>
+  </g>`;
+  // mounting brackets (left side, like the blade signs in the city)
+  for (const y of [392, 588]) {
+    s += `<rect x="232" y="${y - 6}" width="22" height="12" rx="2" fill="url(#metal)" stroke="#0f1013" stroke-width="1.2"/>`;
+  }
+  s += `<rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}" fill="#0b0c10"/>
+        <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}" fill="url(#scan)"/>`;
+  for (const [x, y] of [[257, 205], [363, 205], [257, 925], [363, 925], [257, 565], [363, 565]]) s += bolt(x, y);
+  return s;
+}
+
+// ------------------------------------------------------------------------------- fill (own canvas)
+function fill(w = TRACK.w, h = TRACK.h) {
+  // rounded like the track so the bottom corners sit cleanly inside it
+  return `<clipPath id="fillRound"><rect width="${w}" height="${h}" rx="${TRACK.r}"/></clipPath>
+          <g clip-path="url(#fillRound)">
+          <rect width="${w}" height="${h}" fill="url(#fillGrad)"/>
+          <rect width="${w}" height="${h}" fill="url(#stripes)"/>
+          <rect width="${w}" height="${h}" fill="url(#fillEdge)"/></g>`;
+}
+function cap(w = TRACK.w) {
+  return `<g filter="url(#neon)"><rect x="4" y="12" width="${w - 8}" height="4" rx="2" fill="#ffffff"/></g>
+          <rect x="4" y="13" width="${w - 8}" height="2" rx="1" fill="#ffffff"/>`;
+}
+
+// ------------------------------------------------------------------------------- sakura parts
+function blossom(cx, cy, r, rot, pale = false) {
+  let s = `<g transform="translate(${cx},${cy}) rotate(${rot})" filter="url(#dropSoft)">`;
+  for (let i = 0; i < 5; i++) {
+    const k = 0.92 + rnd() * 0.12;
+    s += `<path d="${PETAL}" transform="rotate(${i * 72 + (rnd() - 0.5) * 6}) scale(${r * k})"
+            fill="url(#${pale ? "petalGradPale" : "petalGrad"})" stroke="#d6457f" stroke-opacity="0.55"
+            stroke-width="${0.9 / (r * k)}" vector-effect="none"/>`;
+  }
+  s += `<circle r="${r * 0.2}" fill="#f45b95"/>`;
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + rnd() * 0.3, L = r * (0.36 + rnd() * 0.1);
+    const x = Math.cos(a) * L, y = Math.sin(a) * L;
+    s += `<line x1="0" y1="0" x2="${x}" y2="${y}" stroke="#c93573" stroke-width="${Math.max(0.8, r * 0.035)}"/>
+          <circle cx="${x}" cy="${y}" r="${Math.max(1.1, r * 0.055)}" fill="#ffd36a"/>`;
+  }
+  return s + `</g>`;
+}
+function bud(cx, cy, rot, s = 1) {
+  return `<g transform="translate(${cx},${cy}) rotate(${rot}) scale(${s})" filter="url(#dropSoft)">
+    <ellipse cx="0" cy="-7" rx="5.5" ry="8.5" fill="url(#budGrad)"/>
+    <path d="M-5,-1 Q0,6 5,-1 Q2,1 0,-3 Q-2,1 -5,-1 Z" fill="#6b2f40"/>
+    <line x1="0" y1="2" x2="0" y2="9" stroke="#4a2a33" stroke-width="1.6" stroke-linecap="round"/>
+  </g>`;
+}
+function looseP(cx, cy, rot, s, op = 0.95) {
+  return `<path d="${PETAL}" transform="translate(${cx},${cy}) rotate(${rot}) scale(${s})" fill="url(#petalGrad)"
+          stroke="#d6457f" stroke-opacity="0.5" stroke-width="${0.9 / s}" opacity="${op}" filter="url(#dropSoft)"/>`;
+}
+function branchSeg(d, w) {
+  return `<path d="${d}" fill="none" stroke="#4e2c39" stroke-width="${w}" stroke-linecap="round"/>
+          <path d="${d}" fill="none" stroke="#a8707f" stroke-width="${Math.max(1.2, w * 0.3)}" stroke-linecap="round"
+                transform="translate(-${w * 0.18},-${w * 0.22})" opacity="0.8"/>`;
+}
+
+function sakura() {
+  seed = 7;
+  let s = "";
+  // branches (behind blossoms)
+  s += branchSeg("M530,36 C480,64 438,104 404,148", 18);
+  s += branchSeg("M404,148 C352,196 262,168 202,190", 12);
+  s += branchSeg("M202,190 C150,206 112,200 68,226", 7);
+  s += branchSeg("M332,176 C322,140 302,118 282,100", 6);
+  s += branchSeg("M152,201 C140,176 122,162 100,150", 4);
+  s += branchSeg("M410,142 C424,220 396,300 404,420", 7);
+  s += branchSeg("M520,1012 C470,986 424,962 388,910", 11);
+  s += branchSeg("M436,966 C452,936 458,914 474,892", 4.5);
+  // buds
+  s += bud(282, 98, -30) + bud(98, 148, -55) + bud(60, 232, -80, 0.9) + bud(474, 888, 20, 0.9) + bud(404, 428, 175);
+  s += bud(470, 60, 30, 0.9) + bud(240, 160, -10, 0.8);
+  // blossoms
+  const B = [[452, 96, 30, -20], [400, 148, 36, 8], [354, 178, 26, 40, 1], [300, 126, 24, 14], [268, 96, 17, 60, 1],
+             [214, 180, 22, 4], [160, 204, 17, 30, 1], [100, 148, 14, 0], [432, 192, 21, 50, 1], [406, 300, 16, 10],
+             [398, 384, 13, 40, 1], [388, 906, 27, 0], [434, 956, 20, 24, 1], [470, 888, 13, 10]];
+  for (const b of B) s += blossom(b[0], b[1], b[2], b[3], !!b[4]);
+  // falling petals
+  s += looseP(176, 318, 32, 15) + looseP(124, 476, -24, 12, 0.85) + looseP(436, 560, 52, 13) +
+       looseP(196, 726, 12, 10, 0.8) + looseP(452, 764, -42, 12) + looseP(162, 884, 26, 9, 0.75) +
+       looseP(452, 474, 120, 9, 0.8);
+  return s;
+}
+
+// ------------------------------------------------------------------------------- overlay
+function overlay() {
+  const t = TRACK;
+  let s = "";
+  // MAX zone (top 6%)
+  const maxH = t.h * 0.06;
+  s += `<clipPath id="trackClip"><rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}"/></clipPath>
+        <g clip-path="url(#trackClip)">
+          <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${maxH}" fill="url(#hatch)"/>
+          <rect x="${t.x}" y="${t.y + maxH - 1}" width="${t.w}" height="1.5" fill="#ffd1e4" opacity="0.7"/>
+          <rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" fill="url(#trackShade)"/>
+          <rect x="${t.x + 7}" y="${t.y + 10}" width="9" height="${t.h - 20}" rx="4.5" fill="#ffffff" opacity="0.07"/>
+        </g>
+        <text x="${t.x + t.w / 2}" y="${t.y + maxH / 2 + 5}" text-anchor="middle" class="lat" font-size="14"
+              letter-spacing="3" fill="#fff" opacity="0.85">MAX</text>`;
+  // ticks
+  for (let i = 1; i < 20; i++) {
+    const y = t.y + t.h - (t.h * i) / 20;
+    const major = i % 2 === 0, quarter = i % 5 === 0;
+    const len = quarter ? 22 : major ? 14 : 8;
+    const op = quarter ? 0.75 : major ? 0.5 : 0.3;
+    s += `<rect x="${t.x + t.w - 6 - len}" y="${y - 0.9}" width="${len}" height="${quarter ? 2.2 : 1.6}" fill="#fff" opacity="${op}"/>
+          <rect x="${t.x + 6}" y="${y - 0.7}" width="${len * 0.5}" height="1.4" fill="#fff" opacity="${op * 0.6}"/>`;
+  }
+  // neon tube (pink LED, white core)
+  const n = rrect(t, 4);
+  s += `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${n.r}" fill="none" stroke="#ff5fa2"
+              stroke-width="3.6" filter="url(#neon)"/>
+        <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${n.r}" fill="none" stroke="#fff2f8"
+              stroke-width="1.3"/>`;
+  // tategaki plate (vertical sign) hanging on the brackets
+  s += `<g filter="url(#shadow)">
+          <rect x="190" y="366" width="44" height="246" rx="6" fill="url(#plate)" stroke="#2a1219" stroke-width="2"/>
+          <rect x="194" y="370" width="36" height="238" rx="4" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1"/>
+        </g>`;
+  const chars = ["桜", "パ", "ワ", "ー"];
+  chars.forEach((c, i) => {
+    const y = 412 + i * 54;
+    if (c === "ー") {
+      s += `<rect x="209.5" y="${y - 24}" width="5" height="30" rx="2.5" fill="#fff"/>`;
+    } else {
+      s += `<text x="212" y="${y}" text-anchor="middle" class="jp" font-size="31" fill="#fff" stroke="#fff"
+                  stroke-width="0.9" paint-order="stroke">${c}</text>`;
+    }
+  });
+  s += bolt(212, 378, 3) + bolt(212, 600, 3);
+  // badge: sakura-shaped emblem with 力 (power)
+  seed = 3;
+  let badge = `<g transform="translate(310,962)" filter="url(#shadow)">`;
+  for (let i = 0; i < 5; i++) {
+    badge += `<path d="${PETAL}" transform="rotate(${i * 72}) scale(50)" fill="url(#petalGrad)"
+                stroke="#2a1219" stroke-width="${2 / 50}"/>`;
+  }
+  badge += `<circle r="27" fill="#16181d" stroke="#2a1219" stroke-width="2"/>
+            <circle r="23" fill="none" stroke="#ff5fa2" stroke-width="2.4" filter="url(#neon)"/>
+            <circle r="23" fill="none" stroke="#fff2f8" stroke-width="0.9"/>
+            <text x="0" y="11" text-anchor="middle" class="jp" font-size="31" fill="#fff" stroke="#fff"
+                  stroke-width="1" paint-order="stroke">力</text></g>`;
+  s += badge;
+  s += sakura();
+  return s;
+}
+
+// ------------------------------------------------------------------------------- glow / marker / petal
+function glow() {
+  const f = FRAME;
+  return `<rect x="${f.x - 6}" y="${f.y - 6}" width="${f.w + 12}" height="${f.h + 12}" rx="${f.r + 6}" fill="none"
+                stroke="#ff4f9a" stroke-width="16" filter="url(#soft)" opacity="0.9"/>
+          <rect x="${f.x - 2}" y="${f.y - 2}" width="${f.w + 4}" height="${f.h + 4}" rx="${f.r + 2}" fill="none"
+                stroke="#ffc2dc" stroke-width="3" filter="url(#neon)" opacity="0.9"/>`;
+}
+function marker() {
+  return `<g filter="url(#dropSoft)">
+    <path d="M2,8 L22,20 L2,32 Z" fill="#ff7a1a" stroke="#2a1219" stroke-width="1.5"/>
+    <path d="M158,8 L138,20 L158,32 Z" fill="#ff7a1a" stroke="#2a1219" stroke-width="1.5"/>
+  </g>
+  <rect x="24" y="18.5" width="112" height="3" fill="#fff" opacity="0.9"/>
+  <rect x="24" y="18.5" width="112" height="3" fill="#ffffff" filter="url(#neon)" opacity="0.6"/>`;
+}
+function petal() {
+  return `<path d="${PETAL}" transform="translate(64,112) scale(100)" fill="url(#petalGrad)" stroke="#d6457f"
+                stroke-opacity="0.55" stroke-width="0.012"/>`;
+}
+
+// ------------------------------------------------------------------------------- preview
+function meter(p, glowOn) {
+  const t = TRACK, fh = t.h * p;
+  return `${glowOn ? glow() : ""}${back()}
+    <clipPath id="fc${Math.round(p * 100)}"><rect x="${t.x}" y="${t.y + t.h - fh}" width="${t.w}" height="${fh}"/></clipPath>
+    <clipPath id="tc${Math.round(p * 100)}"><rect x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="${t.r}"/></clipPath>
+    <g clip-path="url(#tc${Math.round(p * 100)})"><g clip-path="url(#fc${Math.round(p * 100)})">
+      <g transform="translate(${t.x},${t.y})">${fill()}</g></g>
+      <g transform="translate(${t.x},${t.y + t.h - fh - 14})">${cap()}</g></g>
+    <g transform="translate(${t.x + t.w / 2 - 80},${t.y + t.h * 0.1 - 20})">${marker()}</g>
+    ${overlay()}`;
+}
+function preview() {
+  const bg = `<defs><radialGradient id="bgG" cx="0.5" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#2a2433"/><stop offset="1" stop-color="#0d0e12"/></radialGradient></defs>
+    <rect width="1536" height="1024" fill="url(#bgG)"/>`;
+  const label = (x, txt) => `<text x="${x}" y="1004" text-anchor="middle" class="lat" font-size="20" fill="#fff" opacity="0.6">${txt}</text>`;
+  return bg + [0.32, 0.72, 1.0].map((p, i) =>
+    `<g transform="translate(${i * 512},0) scale(0.94) translate(16,0)">${meter(p, p === 1.0)}</g>${label(i * 512 + 256, Math.round(p * 100) + "%")}`).join("");
+}
+
+// ------------------------------------------------------------------------------- render
+const q = new URLSearchParams(location.search);
+const layer = q.get("layer") || "preview";
+const sizes = { back: [W, H], overlay: [W, H], glow: [W, H], fill: [TRACK.w, TRACK.h], cap: [TRACK.w, 28],
+                marker: [160, 40], petal: [128, 128], preview: [1536, 1024] };
+const [vw, vh] = sizes[layer];
+const body = { back, overlay, glow, fill, cap, marker, petal, preview }[layer]();
+document.getElementById("root").innerHTML =
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${vw}" height="${vh}" viewBox="0 0 ${vw} ${vh}">${defs}${body}</svg>`;
+window.SIZE = [vw, vh];
+window.READY = true;
+</script>
+</body>
+</html>
