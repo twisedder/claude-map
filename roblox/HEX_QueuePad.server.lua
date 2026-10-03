@@ -31,7 +31,7 @@ local function setup(model)
 	for _, d in ipairs(model:GetDescendants()) do
 		if d:IsA("BasePart") then
 			d.Anchored = true
-			if d.Name:match("^Pad_Lines") or d.Name:match("^Pad_GlowRing") then
+			if d.Name:match("^Pad_Blossom") or d.Name:match("^Pad_GlowRing") then
 				d.CanCollide = false
 				d.CanQuery = false
 				d.CastShadow = false

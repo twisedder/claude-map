@@ -1,8 +1,8 @@
 """
 HEX! Tokyo queue pad (stand on it to join a game) — matches the Tokyo courts.
 
-Dark graphite pad with a soft rounded rim, deep-navy inset top, cool-white rings and a sakura-pink
-accent ring (separate part so a script can light it up). No text, no blossom.
+Simple: dark graphite pad with a soft rounded rim, deep-navy inset top, one sakura ring (separate part so a
+script can light it up) and a sakura blossom in the middle. No text.
 Same units/colour pipeline as build_hex_courts.py (import exactly like the courts).
 
 Run: blender --background --python blender/build_hex_queuepad.py -- [--render]
@@ -59,23 +59,15 @@ def build():
     disc(top, R_PAD - 0.62, H_PAD - 0.06, "Court_Navy")
     top.build("Pad_Top", coll, root, smooth=True)
 
-    # cool-white rings (outer boundary + centre standing spot), flat graphics like the court lines
-    ln = C.MB()
+    # simple: one sakura ring (its own part so scripts can glow it) + one blossom in the middle
     z = H_PAD - 0.05
-    ln.ring(0, 0, R_PAD - 0.95, R_PAD - 0.82, z, N, "Line_WarmWhite")
-    ln.ring(0, 0, 0.95, 1.05, z, N, "Line_WarmWhite")
-    for k in range(4):  # four short ticks pointing at the centre
-        a = math.pi / 4 + k * math.pi / 2
-        c, s = math.cos(a), math.sin(a)
-        r0, r1, w = 1.35, 1.95, 0.06
-        ln.face([(r0 * c - w * s, r0 * s + w * c, z), (r0 * c + w * s, r0 * s - w * c, z),
-                 (r1 * c + w * s, r1 * s - w * c, z), (r1 * c - w * s, r1 * s + w * c, z)], "Line_WarmWhite")
-    ln.build("Pad_Lines", coll, root)
-
-    # sakura accent ring: its own part so scripts can glow/tween it (e.g. Neon when occupied)
     glow = C.MB()
-    glow.ring(0, 0, R_PAD - 1.18, R_PAD - 1.06, z + 0.004, N, "Sakura")
+    glow.ring(0, 0, R_PAD - 1.0, R_PAD - 0.86, z, N, "Sakura")
     glow.build("Pad_GlowRing", coll, root)
+
+    bl = C.MB()
+    C.blossom(bl, 0, 0, 1.75, z, keyline=True, accent=True, hub=True, dz=0.004)
+    bl.build("Pad_Blossom", coll, root)
     return root
 
 
