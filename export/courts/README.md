@@ -21,6 +21,8 @@ geometric sakura blossom at centre court. No text, no orange decoration. Hoops: 
 white net (60 separate cords per hoop, named `NetCord_<A|B>_L<level>_<i>_<j>` like v4), smooth graphite/navy
 pole and arm.
 
+**Colours:** every part uses one embedded palette texture (`HEX_Court_Palette`), so colours import reliably. The floors are flat colour; add a Roblox material (e.g. Concrete) in Studio if you want surface texture.
+
 **After import:** paste `roblox/HEX_Court_Setup.lua` into the Command Bar (makes the glass transparent and stops
 lines/graphics/net cords from colliding).
 
